@@ -1,5 +1,6 @@
 # vcfprocessing
 Versions 1-5 of VCF merging scripts written to concatenate single sample VCF files into a multisample file. In order to implement the scripts require several conditions:
+
   -A local installation of snpEff with hg19 annotation database. Please refer to http://snpeff.sourceforge.net/SnpEff_manual.html#cmdline
    for further information
   -A directory within snpEff termed "input" as follows ~/snpEff/snpEff/input/*
