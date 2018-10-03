@@ -1,0 +1,49 @@
+#!/bin/bash
+
+export PATH=$PATH:/Users/Maksim/bin/bcftools-1.6
+
+for dir in ~/snpEff/snpEff/input/*;
+do
+	(cd "$dir" &&
+		echo "$dir"
+		for f in *.vcf; 
+		do
+		bgzip $f
+		g=$f.gz
+		tabix -p vcf $g
+		bcftools merge --force-samples *.vcf.gz > all.vcf
+	done;)
+done
+
+#Removal of zipped vcfs and cleaning directories
+for dir in ~/snpEff/snpEff/input/*;
+do
+	(cd "$dir" &&
+		for f in *gz*
+		do
+		rm $f
+	done;)
+done
+
+rm *.vcf
+#Annotating by cancer type
+
+cd ..
+
+#Breast cancer sample annotation using snpEff
+
+#echo "Annotating Breast Cancer Samples with hg19"
+#java -jar snpEff.jar hg19 ~/snpEff/snpEff/input/BRC/all.vcf > BRC_all_ann.vcf 
+#mv BRC_all_ann.vcf ~/snpEff/snpEff/input/BRC/
+#mv snpEff_summary.html BRC_summary.html | mv BRC_summary.html ~/snpEff/snpEff/input/BRC/
+
+for dir in ~/snpEff/snpEff/input/*;
+do
+	type=${dir##'~/snpEff/snpEff/input/'*}
+	echo "${type}"
+	#java -jar snpEff.jar hg19 $dir/all.vcf > "$type"_ann.vcf
+	#mv "$type"_ann.vcf "$dir"
+	#bcftools query -f '[\t%VF\t]\n' $dir/"$type"_ann.vcf > VFs.txt
+	#bcftools query -l  $dir/"$type"_ann.vcf > samples.txt
+done
+

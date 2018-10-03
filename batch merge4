@@ -1,0 +1,80 @@
+#!/bin/bash
+  
+export PATH=$PATH:/Users/Maksim/bin/bcftools-1.6
+
+for dir in ~/snpEff/snpEff/input/*;
+do
+        (cd "$dir" &&
+                echo "$dir"
+                for f in *.vcf;
+                do
+                bgzip $f
+                g=$f.gz
+                tabix -p vcf $g
+                bcftools merge --force-samples *.vcf.gz > all.vcf
+        done;)
+done
+
+#Removal of zipped vcfs and cleaning directories
+for dir in ~/snpEff/snpEff/input/*;
+do
+        (cd "$dir" &&
+                for f in *gz*
+                do
+                rm $f
+        done;)
+done
+
+#Annotating by cancer type
+
+cd ..
+
+#Breast cancer sample annotation using snpEff
+
+#echo "Annotating Breast Cancer Samples with hg19"
+#java -jar snpEff.jar hg19 ~/snpEff/snpEff/input/BRC/all.vcf > BRC_all_ann.vcf 
+#mv BRC_all_ann.vcf ~/snpEff/snpEff/input/BRC/
+#mv snpEff_summary.html BRC_summary.html | mv BRC_summary.html ~/snpEff/snpEff/input/BRC/
+
+for dir in ~/snpEff/snpEff/input/*;
+do
+        #Extract folder name and display
+        type=${dir#~/snpEff/snpEff/input/}
+        echo "Working on ${type}"
+
+        #Annotate the merged file and move back to its folder
+        java -jar snpEff.jar hg19 $dir/all.vcf > "$type"_ann.vcf
+
+        sed -i.bak 's/##FORMAT=<ID=GQ,Number=1,Type=Integer/##FORMAT=<ID=GQ,Number=1,Type=String/g' "$type"_ann.vcf 
+        mv "$type"_ann.vcf "$dir"
+
+        #Query variant freq
+        bcftools query -f '[%VF\t]\n' $dir/"$type"_ann.vcf > VFs.txt
+        mv VFs.txt "$dir"
+
+        #Query samples in merged file
+        bcftools query -l  $dir/"$type"_ann.vcf > samples.txt
+        mv samples.txt "$dir"
+
+        #Extract annotations 
+        java -jar SnpSift.jar extractFields \
+			-s "|" \
+			-e "NA" \
+			$dir/"$type"_ann.vcf \
+			CHROM POS ID FILTER ANN[*].IMPACT ANN[*].ANNOTATION ANN[*].HGVS_P ANN[*].HGVS_C ANN[*].GENE ANN[*].ALLELE  \
+			> Annotation_"$type".txt
+		#awk '{print $6}' Annotation_"$type".txt | cut -d "|" -f1 | sed 's/p.//g' > AAs_"$type".txt
+                #awk '{print $8}' Annotation_"$type".txt | cut -d "|" -f1 > genes_"$type".txt
+                #awk '{print $4 $5}' Annotation_"$type".txt > filter_impact_"$type".txt
+                #paste genes_"$type".txt AAs_"$type".txt > annotations_clean_"$type".txt
+                #paste filter_impact_"$type".txt annotations_clean_"$type".txt > annotations_clean2_"$type".txt
+                paste -s $dir/samples.txt > $dir/samples2.txt
+                cat $dir/VFs.txt >> $dir/samples2.txt
+                paste Annotation_"$type".txt $dir/samples2.txt > $dir/final.txt
+done
+
+#rm AAs_*.txt
+#rm Annotation_*.txt
+#rm annotations_clean_*.txt
+#rm genes_*.txt
+rm *_ann.vcf.bak
